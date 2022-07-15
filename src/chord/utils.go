@@ -7,9 +7,15 @@ import (
 )
 
 const (
-	M           = 160
-	pingAttempt = 4
-	pingTimeOut = 500 * time.Millisecond
+	M                  = 160
+	succListLen        = 5
+	pingAttempt        = 4
+	dialAttempt        = 3
+	pingTimeOut        = 300 * time.Millisecond
+	dialTimeOut        = 300 * time.Millisecond
+	stablizePauseTime  = 100 * time.Millisecond
+	fixfingerPauseTime = 100 * time.Millisecond
+	maintainerNum      = 3
 )
 
 var (
@@ -30,15 +36,15 @@ func pow2(x int) *big.Int {
 	return new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(x)), nil)
 }
 
-func getStart(id *big.Int, x int) *big.Int {
-	return new(big.Int).Mod(new(big.Int).Add(id, pow2(x)), RingSize)
+func getStart(addr string, x int) *big.Int {
+	return new(big.Int).Mod(new(big.Int).Add(hash(addr), pow2(x)), RingSize)
 }
 
-func getInterval(id *big.Int, x int) (*big.Int, *big.Int) {
-	return getStart(id, x), getStart(id, x+1)
+func getInterval(addr string, x int) (*big.Int, *big.Int) {
+	return getStart(addr, x), getStart(addr, x+1)
 }
 
-func inside(id, lower, upper *big.Int, bound string) bool {
+func contain(id, lower, upper *big.Int, bound string) bool {
 	if lower.Cmp(upper) <= 0 {
 		switch bound {
 		case "()":
