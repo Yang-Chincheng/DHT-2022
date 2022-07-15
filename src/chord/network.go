@@ -1,6 +1,7 @@
 package chord
 
 import (
+	"errors"
 	"net"
 	"net/rpc"
 	"time"
@@ -10,18 +11,22 @@ import (
 
 type networkNode struct {
 	nPtr     interface{}
+	service  string
 	addr     string
 	server   *rpc.Server
 	listener net.Listener
+	online   bool
+	quitMsg  chan bool
 }
 
-func (n *networkNode) initServer(ipaddr string, ptr interface{}) {
-	n.addr, n.nPtr = ipaddr, ptr
+func (n *networkNode) serverInit(ipaddr, service string, ptr interface{}) {
+	n.addr, n.service, n.nPtr = ipaddr, service, ptr
+	n.quitMsg = make(chan bool, maintainerNum)
 }
 
 func (n *networkNode) launch() error {
 	n.server = rpc.NewServer()
-	err := n.server.RegisterName("server:"+n.addr, n.nPtr)
+	err := n.server.RegisterName(n.service, n.nPtr)
 	if err != nil {
 		logrus.Errorf("[%s] launch failed while register, error message: %v", n.addr, err)
 		return err
@@ -31,45 +36,98 @@ func (n *networkNode) launch() error {
 		logrus.Errorf("[%s] launch failed while listen, error message: %v", n.addr, err)
 		return err
 	}
-	go n.listen()
+	go n.connect()
 	return nil
 }
 
-func (n *networkNode) listen() error {
+func (n *networkNode) connect() error {
 	for {
-		conn, err := n.listener.Accept()
-		if err != nil {
-			logrus.Errorf("[%s] listen failed while accept, error message: %v", n.addr, err)
-			return err
+		var (
+			conn net.Conn
+			err  error
+		)
+		acceptMsg := make(chan error, 1)
+		go func() {
+			conn, err = n.listener.Accept()
+			acceptMsg <- err
+		}()
+		select {
+		case <-n.quitMsg:
+			logrus.Infof("[%s] server go offline", n.addr)
+			return nil
+		case <-acceptMsg:
+			if err != nil {
+				logrus.Errorf("[%s] connect failed while accept, error message: %v", n.addr, err)
+				return err
+			} else {
+				logrus.Infof("[%s] connect succeeed", n.addr)
+				go n.server.ServeConn(conn)
+			}
 		}
-		go n.server.ServeConn(conn)
 	}
 }
 
-func (n *networkNode) call(address string, method string, request interface{}, reply interface{}) error {
-	client, err := rpc.Dial("tcp", n.addr)
+func (n *networkNode) dial(address string) (*rpc.Client, error) {
+	if address == "" {
+		return nil, errors.New("invalid address")
+	}
+	var (
+		client *rpc.Client
+		err    error
+	)
+	for i := 1; i <= dialAttempt; i++ {
+		dialMsg := make(chan error, 1)
+		go func() {
+			client, err = rpc.Dial("tcp", address)
+			dialMsg <- err
+		}()
+		select {
+		case <-dialMsg:
+			if err != nil {
+				logrus.Infof("[%s] dial %s failed, error message %v", n.addr, address, err)
+				return nil, err
+			} else {
+				logrus.Infof("[%s] dial %s succeeded", n.addr)
+				return client, err
+			}
+		case <-time.After(dialTimeOut):
+			logrus.Tracef("[%s] dial %s time out in attempt%d", n.addr, address, i)
+		}
+	}
+	logrus.Infof("[%s] dial %s time out", n.addr, address)
+	return nil, errors.New("dial time out")
+}
+
+func (n *networkNode) call(address string, service string, method string, request interface{}, reply interface{}) error {
+	client, err := n.dial(address)
 	if err != nil {
-		logrus.Errorf("[%s] rpc failed while dail, error message: %v", n.addr, err)
+		logrus.Errorf("[%s] rpc failed while dail %s, error message: %v", n.addr, address, err)
 		return err
 	}
-	defer func() {
-		if err := client.Close(); err != nil {
-			logrus.Errorf("[%s] rpc failed while close, error message: %v", n.addr, err)
-		}
-	}()
-	err = client.Call(address+"."+method, request, reply)
+	err = client.Call(n.service+"."+method, request, reply)
 	if err != nil {
-		logrus.Errorf("[%s] rpc failed while call, error message: %v", n.addr, err)
+		logrus.Errorf("[%s] rpc failed while call %s.%s at %s, error message: %v", n.addr, n.service, method, address, err)
+		return err
+	}
+	if err := client.Close(); err != nil {
+		logrus.Errorf("[%s] rpc failed while close, error message: %v", n.addr, err)
 		return err
 	}
 	return nil
 }
 
 func (n *networkNode) ping(address string) bool {
+	if address == "" {
+		return false
+	}
+	var (
+		client *rpc.Client
+		err    error
+	)
 	for i := 1; i <= pingAttempt; i++ {
-		pingMsg := make(chan error)
+		pingMsg := make(chan error, 1)
 		go func() {
-			client, err := rpc.Dial("tcp", address)
+			client, err = rpc.Dial("tcp", address)
 			if err == nil {
 				logrus.Tracef("[%s] ping %s succeeded in attempt%d", n.addr, address, i)
 				defer client.Close()
@@ -79,7 +137,7 @@ func (n *networkNode) ping(address string) bool {
 			pingMsg <- err
 		}()
 		select {
-		case err := <-pingMsg:
+		case <-pingMsg:
 			if err != nil {
 				logrus.Infof("[%s] ping %s failed, error message: %v", n.addr, address, err)
 				return false
@@ -93,4 +151,15 @@ func (n *networkNode) ping(address string) bool {
 	}
 	logrus.Infof("[%s] ping %s time out", n.addr, address)
 	return false
+}
+
+func (n *networkNode) shutdown(num int) {
+	n.online = false
+	for i := 0; i < num; i++ {
+		n.quitMsg <- true
+	}
+	err := n.listener.Close()
+	if err != nil {
+		logrus.Errorf("[%s] shutdown failed, error message %v", n.addr, err)
+	}
 }
