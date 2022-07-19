@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	NIL                = ""
 	M                  = 160
 	succListLen        = 5
 	pingAttempt        = 4
@@ -22,8 +23,8 @@ var (
 	RingSize = pow2(M)
 )
 
-type dataPair struct {
-	k, v string
+type DataPair struct {
+	Key, Val string
 }
 
 func hash(key string) *big.Int {
@@ -45,7 +46,7 @@ func getInterval(addr string, x int) (*big.Int, *big.Int) {
 }
 
 func contain(id, lower, upper *big.Int, bound string) bool {
-	if lower.Cmp(upper) <= 0 {
+	if lower.Cmp(upper) < 0 {
 		switch bound {
 		case "()":
 			return id.Cmp(lower) > 0 && id.Cmp(upper) < 0
@@ -70,3 +71,13 @@ func contain(id, lower, upper *big.Int, bound string) bool {
 	}
 	return false
 }
+
+// func simplify(args ...string) []string {
+// 	ret := make([]string, 0, len(args))
+// 	for _, s := range args {
+// 		if s != NIL {
+// 			ret = append(ret, strings.Split(s, ":")[1])
+// 		}
+// 	}
+// 	return ret
+// }

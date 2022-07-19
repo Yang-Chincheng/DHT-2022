@@ -15,7 +15,7 @@ type networkNode struct {
 	addr     string
 	server   *rpc.Server
 	listener net.Listener
-	online   bool
+	onRing   bool
 	quitMsg  chan bool
 }
 
@@ -68,7 +68,7 @@ func (n *networkNode) connect() error {
 }
 
 func (n *networkNode) dial(address string) (*rpc.Client, error) {
-	if address == "" {
+	if address == NIL {
 		return nil, errors.New("invalid address")
 	}
 	var (
@@ -87,7 +87,7 @@ func (n *networkNode) dial(address string) (*rpc.Client, error) {
 				logrus.Infof("[%s] dial %s failed, error message %v", n.addr, address, err)
 				return nil, err
 			} else {
-				logrus.Infof("[%s] dial %s succeeded", n.addr)
+				logrus.Infof("[%s] dial %s succeeded", n.addr, address)
 				return client, err
 			}
 		case <-time.After(dialTimeOut):
@@ -104,9 +104,10 @@ func (n *networkNode) call(address string, service string, method string, reques
 		logrus.Errorf("[%s] rpc failed while dail %s, error message: %v", n.addr, address, err)
 		return err
 	}
-	err = client.Call(n.service+"."+method, request, reply)
+	logrus.Infof("[%s] remote call to method %s with request %v, reply %v", n.addr, method, request, reply)
+	err = client.Call(service+"."+method, request, reply)
 	if err != nil {
-		logrus.Errorf("[%s] rpc failed while call %s.%s at %s, error message: %v", n.addr, n.service, method, address, err)
+		logrus.Errorf("[%s] rpc failed while call %s at %s, error message: %v", n.addr, method, address, err)
 		return err
 	}
 	if err := client.Close(); err != nil {
@@ -117,7 +118,7 @@ func (n *networkNode) call(address string, service string, method string, reques
 }
 
 func (n *networkNode) ping(address string) bool {
-	if address == "" {
+	if address == NIL {
 		return false
 	}
 	var (
@@ -154,7 +155,7 @@ func (n *networkNode) ping(address string) bool {
 }
 
 func (n *networkNode) shutdown(num int) {
-	n.online = false
+	n.onRing = false
 	for i := 0; i < num; i++ {
 		n.quitMsg <- true
 	}
