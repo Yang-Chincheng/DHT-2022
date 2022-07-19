@@ -44,3 +44,7 @@ func (n *ChordNode) Get(key string) (bool, string) {
 func (n *ChordNode) Delete(key string) bool {
 	return n.base.del(key)
 }
+
+// func (n *ChordNode) Print(key string) {
+// 	n.base.print(key)
+// }
