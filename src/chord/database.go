@@ -4,21 +4,24 @@ import (
 	"sync"
 )
 
+type StoreType map[KeyType]ValueType
+type FilterType func(string) bool
+
 type databaseNode struct {
 	dataLock   sync.RWMutex
 	backupLock sync.RWMutex
-	data       map[string]string
-	backup     map[string]string
+	data       StoreType
+	backup     StoreType
 }
 
 func (n *databaseNode) storeInit() {
-	n.data = make(map[string]string)
-	n.backup = make(map[string]string)
+	n.data = make(StoreType)
+	n.backup = make(StoreType)
 }
 
 func (n *databaseNode) storeReset() {
-	n.data = make(map[string]string)
-	n.backup = make(map[string]string)
+	n.data = make(StoreType)
+	n.backup = make(StoreType)
 }
 
 func (n *databaseNode) PutData(p DataPair, _ *string) error {
@@ -35,21 +38,21 @@ func (n *databaseNode) PutBackup(p DataPair, _ *string) error {
 	return nil
 }
 
-func (n *databaseNode) GetData(k string, v *string) error {
+func (n *databaseNode) GetData(k KeyType, v *ValueType) error {
 	n.dataLock.RLock()
 	defer n.dataLock.RUnlock()
 	*v = n.data[k]
 	return nil
 }
 
-func (n *databaseNode) GetBackup(k string, v *string) error {
+func (n *databaseNode) GetBackup(k KeyType, v *ValueType) error {
 	n.backupLock.RLock()
 	defer n.backupLock.RUnlock()
 	*v = n.backup[k]
 	return nil
 }
 
-func (n *databaseNode) SetData(mp map[string]string, _ *string) error {
+func (n *databaseNode) SetData(mp StoreType, _ *string) error {
 	n.data = make(map[string]string)
 	for k, v := range mp {
 		n.data[k] = v
@@ -57,7 +60,7 @@ func (n *databaseNode) SetData(mp map[string]string, _ *string) error {
 	return nil
 }
 
-func (n *databaseNode) SetBackup(mp map[string]string, _ *string) error {
+func (n *databaseNode) SetBackup(mp StoreType, _ *string) error {
 	n.backup = make(map[string]string)
 	for k, v := range mp {
 		n.backup[k] = v
@@ -65,21 +68,21 @@ func (n *databaseNode) SetBackup(mp map[string]string, _ *string) error {
 	return nil
 }
 
-func (n *databaseNode) DeleteData(k string, _ *string) error {
+func (n *databaseNode) DeleteData(k KeyType, _ *string) error {
 	n.dataLock.Lock()
 	defer n.dataLock.Unlock()
 	delete(n.data, k)
 	return nil
 }
 
-func (n *databaseNode) DeleteBackup(k string, _ *string) error {
+func (n *databaseNode) DeleteBackup(k KeyType, _ *string) error {
 	n.backupLock.Lock()
 	defer n.backupLock.Unlock()
 	delete(n.backup, k)
 	return nil
 }
 
-func (n *databaseNode) AppendData(mp map[string]string, _ *string) error {
+func (n *databaseNode) AppendData(mp StoreType, _ *string) error {
 	n.dataLock.Lock()
 	defer n.dataLock.Unlock()
 	for k, v := range mp {
@@ -88,7 +91,7 @@ func (n *databaseNode) AppendData(mp map[string]string, _ *string) error {
 	return nil
 }
 
-func (n *databaseNode) AppendBackup(mp map[string]string, _ *string) error {
+func (n *databaseNode) AppendBackup(mp StoreType, _ *string) error {
 	n.backupLock.Lock()
 	defer n.backupLock.Unlock()
 	for k, v := range mp {
@@ -97,7 +100,7 @@ func (n *databaseNode) AppendBackup(mp map[string]string, _ *string) error {
 	return nil
 }
 
-func (n *databaseNode) FilterData(filter func(string) bool, res *map[string]string) error {
+func (n *databaseNode) FilterData(filter FilterType, res *StoreType) error {
 	n.dataLock.Lock()
 	defer n.dataLock.Unlock()
 	for k, v := range n.data {
@@ -109,7 +112,7 @@ func (n *databaseNode) FilterData(filter func(string) bool, res *map[string]stri
 	return nil
 }
 
-func (n *databaseNode) FilterBackup(filter func(string) bool, res *map[string]string) error {
+func (n *databaseNode) FilterBackup(filter FilterType, res *StoreType) error {
 	n.backupLock.Lock()
 	defer n.backupLock.Unlock()
 	for k, v := range n.backup {
@@ -121,7 +124,7 @@ func (n *databaseNode) FilterBackup(filter func(string) bool, res *map[string]st
 	return nil
 }
 
-func (n *databaseNode) CopyData(_ string, mp *map[string]string) error {
+func (n *databaseNode) CopyData(_ string, mp *StoreType) error {
 	n.dataLock.RLock()
 	defer n.dataLock.RUnlock()
 	for k, v := range n.data {
@@ -130,7 +133,7 @@ func (n *databaseNode) CopyData(_ string, mp *map[string]string) error {
 	return nil
 }
 
-func (n *databaseNode) CopyBackup(_ string, mp *map[string]string) error {
+func (n *databaseNode) CopyBackup(_ string, mp *StoreType) error {
 	n.backupLock.RLock()
 	defer n.backupLock.RUnlock()
 	for k, v := range n.backup {
@@ -142,19 +145,19 @@ func (n *databaseNode) CopyBackup(_ string, mp *map[string]string) error {
 func (n *databaseNode) ClearData(_ string, _ *string) error {
 	n.dataLock.Lock()
 	defer n.dataLock.Unlock()
-	n.data = make(map[string]string)
+	n.data = make(StoreType)
 	return nil
 }
 
 func (n *databaseNode) ClearBackup(_ string, _ *string) error {
 	n.backupLock.Lock()
 	defer n.backupLock.Unlock()
-	n.backup = make(map[string]string)
+	n.backup = make(StoreType)
 	return nil
 }
 
-func (n *databaseNode) dataSize() int {
-	n.dataLock.RLock()
-	defer n.dataLock.RUnlock()
-	return len(n.data)
-}
+// func (n *databaseNode) dataSize() int {
+// 	n.dataLock.RLock()
+// 	defer n.dataLock.RUnlock()
+// 	return len(n.data)
+// }

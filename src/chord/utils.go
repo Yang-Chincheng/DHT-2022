@@ -23,29 +23,33 @@ var (
 	RingSize = pow2(M)
 )
 
+type (
+	Address   = string
+	Identifer = *big.Int
+	KeyType   = string
+	ValueType = string
+)
+
 type DataPair struct {
-	Key, Val string
+	Key KeyType
+	Val ValueType
 }
 
-func hash(key string) *big.Int {
+func hash(key string) Identifer {
 	hasher := sha1.New()
 	hasher.Write([]byte(key))
 	return new(big.Int).SetBytes(hasher.Sum(nil))
 }
 
-func pow2(x int) *big.Int {
+func pow2(x int) Identifer {
 	return new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(x)), nil)
 }
 
-func getStart(addr string, x int) *big.Int {
+func getStart(addr string, x int) Identifer {
 	return new(big.Int).Mod(new(big.Int).Add(hash(addr), pow2(x)), RingSize)
 }
 
-func getInterval(addr string, x int) (*big.Int, *big.Int) {
-	return getStart(addr, x), getStart(addr, x+1)
-}
-
-func contain(id, lower, upper *big.Int, bound string) bool {
+func contain(id, lower, upper Identifer, bound string) bool {
 	if lower.Cmp(upper) < 0 {
 		switch bound {
 		case "()":
