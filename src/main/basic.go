@@ -10,12 +10,12 @@ import (
 func basicTest() (bool, int, int) {
 	basicFailedCnt, basicTotalCnt, panicked := 0, 0, false
 
-	defer func() {
-		if r := recover(); r != nil {
-			_, _ = red.Println("Program panicked with", r)
-		}
-		panicked = true
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		_, _ = red.Println("Program panicked with", r)
+	// 	}
+	// 	panicked = true
+	// }()
 
 	nodes := new([basicTestNodeSize + 1]dhtNode)
 	nodeAddresses := new([basicTestNodeSize + 1]string)
@@ -75,6 +75,7 @@ func basicTest() (bool, int, int) {
 		}
 		_, _ = cyan.Printf("Start putting (round %d, part 1)\n", t)
 		for i := 1; i <= basicTestRoundPutSize; i++ {
+			cyan.Printf("put test part1 no.%d in round %d\n", i, t)
 			key := randString(lengthOfKeyValue)
 			value := randString(lengthOfKeyValue)
 			kvMap[key] = value
@@ -96,14 +97,18 @@ func basicTest() (bool, int, int) {
 		_, _ = cyan.Printf("Start getting (round %d, part 1)\n", t)
 		get1Cnt := 0
 		for key, value := range kvMap {
+			cyan.Printf("get test part1 no.%d in round %d\n", get1Cnt+1, t)
+
 			ok, res := nodes[nodesInNetwork[rand.Intn(len(nodesInNetwork))]].Get(key)
 			if !ok || res != value {
+				red.Printf("%v %v %v\n", ok, res, value)
 				get1Info.fail()
 			} else {
 				get1Info.success()
 			}
 
 			get1Cnt++
+
 			if get1Cnt == basicTestRoundGetSize {
 				break
 			}
@@ -153,6 +158,8 @@ func basicTest() (bool, int, int) {
 		}
 		_, _ = cyan.Printf("Start putting (round %d, part 2)\n", t)
 		for i := 1; i <= basicTestRoundPutSize; i++ {
+			cyan.Printf("put test part2 no.%d in round %d\n", i, t)
+
 			key := randString(lengthOfKeyValue)
 			value := randString(lengthOfKeyValue)
 			kvMap[key] = value
@@ -174,6 +181,8 @@ func basicTest() (bool, int, int) {
 		_, _ = cyan.Printf("Start getting (round %d, part 2)\n", t)
 		get2Cnt := 0
 		for key, value := range kvMap {
+			cyan.Printf("get test part2 no.%d in round %d\n", get2Cnt+1, t)
+
 			ok, res := nodes[nodesInNetwork[rand.Intn(len(nodesInNetwork))]].Get(key)
 			if !ok || res != value {
 				get2Info.fail()

@@ -24,6 +24,7 @@ func init() {
 		os.Exit(0)
 	}
 
+	// rand.Seed(0)
 	rand.Seed(time.Now().UnixNano())
 }
 

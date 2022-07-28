@@ -1,7 +1,7 @@
 package main
 
 import (
-	"DHT-2022/src/kademlia"
+	"DHT-2022/src/chord"
 	"fmt"
 )
 
@@ -10,8 +10,7 @@ import (
  */
 
 func NewNode(port int) dhtNode {
-	// Todo: create a node and then return it.
-	return kademlia.NewKademliaNode(GetLocalAddress() + ":" + fmt.Sprint(port))
+	node := new(chord.ChordNode)
+	node.Initialize(GetLocalAddress() + ":" + fmt.Sprint(port))
+	return node
 }
-
-// Todo: implement a struct which implements the interface "dhtNode".

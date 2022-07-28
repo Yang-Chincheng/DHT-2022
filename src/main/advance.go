@@ -12,12 +12,12 @@ func forceQuitTest() (bool, int, int) {
 
 	forceQuitFailedCnt, forceQuitTotalCnt, panicked := 0, 0, false
 
-	defer func() {
-		if r := recover(); r != nil {
-			_, _ = red.Println("Program panicked with", r)
-		}
-		panicked = true
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		_, _ = red.Println("Program panicked with", r)
+	// 	}
+	// 	panicked = true
+	// }()
 
 	nodes := new([forceQuitNodeSize + 1]dhtNode)
 	nodeAddresses := new([forceQuitNodeSize + 1]string)
