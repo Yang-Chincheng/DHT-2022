@@ -78,8 +78,8 @@ func (k *kademliaImpl) Lookup(key KeyType, id Identifer, rpcFunc LookupRpc) (boo
 		select {
 		case res := <-ch:
 			if res.Found {
-				retCont := minInSlice(retList, res.FoundBy)
-				return true, []ContWithDist{retCont}, res.Value, nil
+				// retCont := minInSlice(retList, res.FoundBy)
+				return true, res.Cont, res.Value, nil
 			}
 			for _, v := range res.Cont {
 				if _, ok := visit[v.Cont.Addr]; !ok {
@@ -138,7 +138,7 @@ func (k *kademliaImpl) primitiveFindValue(sender Contact, key KeyType) (bool, Co
 func (k *kademliaImpl) iterativeStore(key KeyType, val ValueType) {
 	k.router.Touch(hash(key))
 	k.origin.Put(key, val, 0)
-	k.TransferDataToCloserNodes(key, val, true)
+	k.TransferDataToCloserNodes(key, val, false)
 }
 
 // start an iterative lookup process for nodes
@@ -160,16 +160,17 @@ func (k *kademliaImpl) iterativeFindValue(key KeyType) (bool, ValueType) {
 	} else {
 		found, contacts, val, _ := k.Lookup(key, hash(key), k.proto.rpcFindValue)
 		if found {
-			// if val == NIL {
-			// 	panic("invalid value after lookup")
-			// }
-			if target := contacts[0].Cont; target.Addr != NIL {
-				// cache data to the cloest node that doesnt have it
-				idx1 := k.router.ContactIndex(target)
-				idx2 := k.router.ContactIndex(k.router.host)
-				sepNum := minInt(absInt(idx1-idx2), 20)
-				expireTime := ExpireTime / time.Duration(math.Pow(2, float64(sepNum)))
-				k.proto.rpcStore(target, key, val, true, expireTime)
+			// cache data to cloest nodes that doesnt have it
+			upto := minInt(3, len(contacts))
+			for i := 0; i < upto; i++ {
+				target := contacts[i].Cont
+				if target.Addr != NIL {
+					idx1 := k.router.ContactIndex(target)
+					idx2 := k.router.ContactIndex(k.router.host)
+					sepNum := minInt(absInt(idx1-idx2), 20)
+					expireTime := ExpireTime / time.Duration(math.Pow(2, float64(sepNum)))
+					k.proto.rpcStore(target, key, val, true, expireTime)
+				}
 			}
 			return true, val
 		}

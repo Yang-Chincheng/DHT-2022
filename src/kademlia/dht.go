@@ -30,6 +30,7 @@ func (k *KademliaNode) Join(addr Address) bool {
 	k.impl.router.AddContact(*NewContact(addr))
 	k.impl.iterativeFindNode(k.impl.addr)
 	k.impl.maintain()
+	k.impl.online = true
 	return true
 }
 

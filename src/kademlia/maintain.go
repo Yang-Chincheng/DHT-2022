@@ -31,14 +31,13 @@ func (k *kademliaImpl) TransferDataToNewNodes(sender Contact) {
 //
 // used for spreading data to the right nodes for them
 func (k *kademliaImpl) TransferDataToCloserNodes(key KeyType, val ValueType, enableLookup bool) {
-	// _, b := k.router.FindBucket(hash(key))
+	_, b := k.router.FindBucket(hash(key))
 	var contacts []ContWithDist
-	// _, contacts, _, _ = k.Lookup(key, hash(key), k.proto.rpcFindNode)
-	// if enableLookup && time.Now().After(b.timeStamp.Add(RefreshInterval)) {
-	// 	_, contacts, _, _ = k.Lookup(key, hash(key), k.proto.rpcFindNode)
-	// } else {
-	contacts = k.router.GetClosestContacts(hash(key), K)
-	// }
+	if enableLookup && time.Now().After(b.timeStamp.Add(RefreshInterval)) {
+		_, contacts, _, _ = k.Lookup(key, hash(key), k.proto.rpcFindNode)
+	} else {
+		contacts = k.router.GetClosestContacts(hash(key), K)
+	}
 	ch := make(chan bool, Alpha)
 	for _, v := range contacts {
 		go func(c Contact) {

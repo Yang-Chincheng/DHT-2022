@@ -21,7 +21,7 @@ const (
 	PingTimeOut   = 500 * time.Millisecond
 	LookupTimeOut = 500 * time.Millisecond
 
-	ExpireTime        = 30 * time.Second
+	ExpireTime        = 40 * time.Second
 	RefreshInterval   = 30 * time.Second
 	RepublishInterval = 30 * time.Second
 )
