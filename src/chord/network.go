@@ -48,17 +48,13 @@ func (n *networkNode) connect() error {
 			conn net.Conn
 			err  error
 		)
-		acceptMsg := make(chan error, 1)
-		go func() {
-			conn, err = n.listener.Accept()
-			acceptMsg <- err
-		}()
+		conn, err = n.listener.Accept()
 		select {
 		case <-n.quitMsg:
 			logger(n.addr).Info("server go offline")
 			// logrus.Infof("[%s] server go offline", n.addr)
 			return nil
-		case <-acceptMsg:
+		default:
 			if err != nil {
 				errLogger(n.addr, err).Error("connect failed while accept")
 				// logrus.Errorf("[%s] connect failed while accept, error message: %v", n.addr, err)
