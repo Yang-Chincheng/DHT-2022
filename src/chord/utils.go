@@ -8,6 +8,9 @@ import (
 
 const (
 	M           = 160
+	B           = 5
+	K           = 20
+	Alpha       = 3
 	pingAttempt = 4
 	pingTimeOut = 500 * time.Millisecond
 )
